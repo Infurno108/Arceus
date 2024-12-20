@@ -1,6 +1,7 @@
-const { Client, Events, GatewayIntentBits, Message } = require("discord.js");
+const { Client, Events, GatewayIntentBits, Intents } = require("discord.js");
 const { botKey } = require("./config.json");
-const { exec } = require("child_process");
+const { exec } = require("node:child_process");
+const { spawn } = require("node:child_process");
 
 const client = new Client({
   intents: [
@@ -19,26 +20,33 @@ client.once(Events.ClientReady, (readyClient) => {
 client.login(botKey);
 
 client.once("ready", async () => {
+  console.log("Arceus is alive, starting server.");
+  serverStart();
+});
+
+function serverStart() {
   const channel = client.channels.cache.get("1112805993286484059"); //get channel by ID
   //cool now we just casually have to create a loop of running a screen sh command and then waiting to restart the server after 6 hours of uptime and then repeat. Also catching any ending of the child process.
   //channel.send("Server is resetting in 30 seconds...I recommend you land");
-  await new Promise((resolve) => setTimeout(resolve, 30000)); //5 seconds
-  while (true) {
-    exec("screen -XS mc quit", (err, output) => {
-      if (err) {
-        console.log(err);
-      }
-    });
-    exec(
-      "screen -xS mc sh /home/pborrego/Server/pixelmon/run.sh",
-      (err, output) => {
-        if (err) {
-          console.log(err);
-          return;
-        }
-        channel.send("Server is online.");
-      }
+  const command = spawn("sh", ["run.sh"]);
+  console.log("process started");
+  channel.send("Server is online.");
+  command.on("exit", (code) => {
+    channel.send("Server has shutdown, restarting now...");
+    serverStart();
+  });
+  command.stdout.on("data", (data) => {
+    console.log(data.toString());
+  }); //prints console output
+  command.stderr.on("data", (data) => {
+    console.error(data.toString());
+  }); //prints errors
+  setTimeout(() => {
+    command.stdin.write(
+      "/tell @a Server is resetting in 30 seconds...I recommend you land\n"
     );
-    await new Promise((resolve) => setTimeout(resolve, 21600000)); //6 hours
-  }
-});
+    setTimeout(() => {
+      command.kill();
+    }, 30000);
+  }, 21600000); //6 hours
+}
