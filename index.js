@@ -21,9 +21,10 @@ client.once(Events.ClientReady, (readyClient) => {
 client.login(botKey);
 
 client.once("ready", async () => {
-  console.log("Arceus is alive, starting server.");
-  console.log(statusCheck());
-  serverStart();
+  console.log("Starting server.");
+  while (true) {
+    serverStart();
+  }
 });
 
 /*
@@ -34,20 +35,22 @@ si.mem(cb)
 */
 
 function statusCheck() {
+  const channel = client.channels.cache.get("1112805993286484059");
   si.cpuTemperature((data) => {
     console.log("temp:");
     console.log(data);
     if (data.main > 60) {
       console.log("CPU is overheating"); //change this to a discord msg
+      channel.send("HELL IS OVERFLOWING THE CPU IS OVERHEATING");
     }
-  });
-  si.cpuCurrentSpeed((data) => {
-    console.log("speed:");
-    console.log(data);
   });
   si.mem((data) => {
     console.log("data");
     console.log(data);
+    if (data.used > data.total * 0.8) {
+      console.log("Memory is almost full");
+      channel.send("MEMORY IS ALMOST FULL");
+    }
   });
 }
 
@@ -57,12 +60,9 @@ function serverStart() {
   //channel.send("Server is resetting in 30 seconds...I recommend you land");
   const command = spawn("sh", ["run.sh"]);
   console.log("process started");
-  //channel.send("Server is online.");
+  channel.send("Server is online.");
   command.on("exit", (code) => {
     channel.send("Server has shutdown, restarting now...");
-    setTimeout(() => {
-      serverStart();
-    }, 5000);
   });
   command.stdout.on("data", (data) => {
     console.log(data.toString());
@@ -75,8 +75,12 @@ function serverStart() {
     command.stdin.write(
       "/tell @a Server is resetting in 30 seconds...I recommend you land\n"
     );
+    channel.send("Recursive reset test, server is resetting in 10 seconds...");
     setTimeout(() => {
       command.kill();
-    }, 30000);
-  }, 21600000); //6 hours
+    }, 10000);
+  }, 60000); //6 hours
 }
+
+//30000
+//21600000
