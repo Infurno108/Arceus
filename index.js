@@ -53,24 +53,36 @@ function statusCheck() {
   });
 }
 
+function cleanUp(command) {
+  const channel = client.channels.cache.get("1112805993286484059");
+  var list = [];
+  var formattedList = [];
+  const grep = spawn("sh", ["scan.sh"]);
+  grep.stdout.on("data", (data) => {
+    list = data.toString().trim().split("root       ");
+    for (i = 0; i < list.length; i++) {
+      formattedList.push(list[i].split(" ")[0]);
+    }
+    grep.kill();
+  });
+  channel.send(formattedList);
+  for (i = 0; i < formattedList.length; i++) {
+    channel.send("Killing: " + formattedList[i]);
+  }
+  command.kill();
+  channel.send("No shot that worked");
+}
+
 async function serverStart() {
-  const channel = client.channels.cache.get("1112805993286484059"); //get channel by ID
+  const channel = client.channels.cache.get("1112805993286484059");
   //cool now we just casually have to create a loop of running a screen sh command and then waiting to restart the server after 6 hours of uptime and then repeat. Also catching any ending of the child process.
   //channel.send("Server is resetting in 30 seconds...I recommend you land");
 
   const command = spawn("sh", ["run.sh"]); //running the server
-  const grep = spawn("sh", ["scan.sh"]); //
 
-  grep.stdout.on("data", (data) => {
-    channel.send("Holy crap that worked: " + data);
-
-    grep.kill();
-  });
-
-  var pid = command.pid;
   console.log("process started");
   channel.send("Server is booting up now...");
-  channel.send("SH command PID: " + pid.toString());
+
   command.on("exit", (code) => {
     channel.send("Server has shutdown, restarting now...");
     serverStart();
@@ -88,13 +100,12 @@ async function serverStart() {
       "/tell @a Server is resetting in 30 seconds...I recommend you land\n"
     );
     channel.send(
-      "I am fucking sick of this message only being sent once, resetting in 10 seconds..."
+      "Ok now we are literally using commands to kill every instance of mc running..."
     );
     setTimeout(() => {
-      command.kill();
-      exec(`kill ${pid}`);
+      cleanUp(command);
     }, 10000);
-  }, 60000); //6 hours
+  }, 30000); //6 hours
 }
 
 //30000
