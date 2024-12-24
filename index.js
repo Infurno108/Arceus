@@ -3,7 +3,7 @@ const { botKey } = require("./config.json");
 const { exec } = require("node:child_process");
 const { spawn } = require("node:child_process");
 const si = require("systeminformation");
-var grep = "BITCH";
+var processes = "Shit";
 
 const client = new Client({
   intents: [
@@ -57,38 +57,30 @@ async function serverStart() {
   const channel = client.channels.cache.get("1112805993286484059"); //get channel by ID
   //cool now we just casually have to create a loop of running a screen sh command and then waiting to restart the server after 6 hours of uptime and then repeat. Also catching any ending of the child process.
   //channel.send("Server is resetting in 30 seconds...I recommend you land");
-  const command = spawn("sh", ["run.sh"]);
-  grep = exec(
-    "ps aux | grep 'java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.3.0/unix_args.txt' | grep -v grep",
-    function (err, stdout, grep) {
-      if (err) {
-        console.error(err);
-        return;
-      }
-      channel.send("this is a test inside the nested exec function: " + stdout);
-      return stdout;
-    }
-  );
+
+  const command = spawn("sh", ["run.sh"]); //running the server
+  const grep = spawn("sh", ["scan.sh"]); //
+
+  grep.stdout.on("data", (data) => {
+    channel.send("Holy crap that worked: " + data);
+
+    grep.kill();
+  });
 
   var pid = command.pid;
   console.log("process started");
   channel.send("Server is booting up now...");
   channel.send("SH command PID: " + pid.toString());
-  //console.log("MC instance grep execution: " + grep);
-  //channel.send("MC instance grep execution: " + grep);
-  channel.send(
-    "For entertainments purposes, here is a dammit every time theres an error when booting the server:"
-  );
   command.on("exit", (code) => {
     channel.send("Server has shutdown, restarting now...");
     serverStart();
   });
   command.stdout.on("data", (data) => {
     console.log(data.toString());
+    //channel.send("\n");
   }); //prints console output
   command.stderr.on("data", (data) => {
     console.error(data.toString());
-    channel.send("dammit");
   }); //prints errors
 
   setTimeout(() => {
