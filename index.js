@@ -22,9 +22,7 @@ client.login(botKey);
 
 client.once("ready", async () => {
   console.log("Starting server.");
-  while (true) {
-    serverStart();
-  }
+  serverStart();
 });
 
 /*
@@ -59,10 +57,25 @@ function serverStart() {
   //cool now we just casually have to create a loop of running a screen sh command and then waiting to restart the server after 6 hours of uptime and then repeat. Also catching any ending of the child process.
   //channel.send("Server is resetting in 30 seconds...I recommend you land");
   const command = spawn("sh", ["run.sh"]);
+  var pid = command.pid;
   console.log("process started");
-  channel.send("Server is online.");
+  channel.send("Server is booting up now...");
+  channel.send("SH command PID: " + pid.toString());
+  var grep = exec(
+    "ps aux | grep 'java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.3.0/unix_args.txt' | grep -v grep",
+    function (err, stdout, stderr) {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      return stdout;
+    }
+  );
+  console.log("MC instance grep execution: " + grep.toString());
+  channel.send("MC instance grep execution: " + grep.toString());
   command.on("exit", (code) => {
     channel.send("Server has shutdown, restarting now...");
+    serverStart();
   });
   command.stdout.on("data", (data) => {
     console.log(data.toString());
@@ -75,9 +88,12 @@ function serverStart() {
     command.stdin.write(
       "/tell @a Server is resetting in 30 seconds...I recommend you land\n"
     );
-    channel.send("Recursive reset test, server is resetting in 10 seconds...");
+    channel.send(
+      "I am fucking sick of this message only being sent once, resetting in 10 seconds..."
+    );
     setTimeout(() => {
       command.kill();
+      exec(`kill ${pid}`);
     }, 10000);
   }, 60000); //6 hours
 }
