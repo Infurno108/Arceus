@@ -30,7 +30,6 @@ client.once("ready", async () => {
 si.cpuTemperature(cb)
 si.cpuCurrentSpeed(cb)
 si.mem(cb)
-
 */
 
 function statusCheck() {
@@ -53,24 +52,24 @@ function statusCheck() {
   });
 }
 
-function cleanUp(command) {
+function cleanUp() {
   const channel = client.channels.cache.get("1112805993286484059");
   var list = [];
   var formattedList = [];
-  const grep = spawn("sh", ["scan.sh"]);
-  grep.stdout.on("data", (data) => {
-    list = data.toString().trim().split("root       ");
+  exec("sh scan.sh", (error, stdout, stderr) => {
+    //executes the sh script that includes the command to list all processes, and the grep to isolate the mc server processes. In the event these are not the thing causing the core bug, shit...
+    if (error) {
+      console.error(`exec error: ${error}`);
+      return;
+    }
+    list = stdout.toString().trim().split("root       ");
+    //splits on the collumn name? Maybe. idk idc
     for (i = 0; i < list.length; i++) {
       formattedList.push(list[i].split(" ")[0]);
+      exec("kill " + formattedList[i]);
+      //executes the simple kill command, sometimes -9 is used. This requires the node instance run as sudo.
     }
-    grep.kill();
   });
-  channel.send(formattedList);
-  for (i = 0; i < formattedList.length; i++) {
-    channel.send("Killing: " + formattedList[i]);
-  }
-  command.kill();
-  channel.send("No shot that worked");
 }
 
 async function serverStart() {
@@ -81,31 +80,30 @@ async function serverStart() {
   const command = spawn("sh", ["run.sh"]); //running the server
 
   console.log("process started");
-  channel.send("Server is booting up now...");
+  channel.send("Server started. Waiting for 6 hours to restart");
 
   command.on("exit", (code) => {
-    channel.send("Server has shutdown, restarting now...");
+    //this is the recursive function. It will restart the server after 6 hours of uptime. This triggers when the sh command const is stopped. (Either through crash or manual stop)
     serverStart();
   });
   command.stdout.on("data", (data) => {
     console.log(data.toString());
-    //channel.send("\n");
+    //Simply sends the output of the sh command to the console.
   }); //prints console output
   command.stderr.on("data", (data) => {
     console.error(data.toString());
-  }); //prints errors
-
+  }); //unfortunately we have a comical like 21 error messages we need to look into. So we need to see this.
   setTimeout(() => {
+    //The timeout is set to: 60 seconds
+    //This is the first time out. It will be the grand one that will trigger the reset of the server for safety reasons. When more then 6 people or so are on the server the server will start to lag. (In the future possibly make the timeout dynamic based on the amount of players on the server)
     command.stdin.write(
       "/tell @a Server is resetting in 30 seconds...I recommend you land\n"
     );
-    channel.send(
-      "Ok now we are literally using commands to kill every instance of mc running..."
-    );
     setTimeout(() => {
-      cleanUp(command);
-    }, 10000);
-  }, 30000); //6 hours
+      cleanUp(); //this will kill all processes on the server using an sh command to read the system information the node module can't read. (isn't that neat :D)
+      command.kill();
+    }, 30000);
+  }, 21600000); //6 hours
 }
 
 //30000
