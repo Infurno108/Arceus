@@ -66,7 +66,11 @@ function cleanUp() {
     //splits on the collumn name? Maybe. idk idc
     for (i = 0; i < list.length; i++) {
       formattedList.push(list[i].split(" ")[0]);
-      exec("kill " + formattedList[i]);
+      exec("kill " + formattedList[i], (error) => {
+        if (error) {
+          channel.send("Kill error: " + error);
+        }
+      });
       //executes the simple kill command, sometimes -9 is used. This requires the node instance run as sudo.
     }
   });
@@ -76,7 +80,7 @@ async function serverStart() {
   const channel = client.channels.cache.get("1112805993286484059");
   //cool now we just casually have to create a loop of running a screen sh command and then waiting to restart the server after 6 hours of uptime and then repeat. Also catching any ending of the child process.
   //channel.send("Server is resetting in 30 seconds...I recommend you land");
-
+  var errors = 0;
   const command = spawn("sh", ["run.sh"]); //running the server
 
   console.log("process started");
@@ -92,6 +96,7 @@ async function serverStart() {
   }); //prints console output
   command.stderr.on("data", (data) => {
     console.error(data.toString());
+    errors++;
   }); //unfortunately we have a comical like 21 error messages we need to look into. So we need to see this.
   setTimeout(() => {
     //The timeout is set to: 60 seconds
@@ -101,6 +106,9 @@ async function serverStart() {
     );
     setTimeout(() => {
       cleanUp(); //this will kill all processes on the server using an sh command to read the system information the node module can't read. (isn't that neat :D)
+      channel.send(
+        "Server is restarting with a total of: " + errors + " errors"
+      );
       command.kill();
     }, 30000);
   }, 21600000); //6 hours
